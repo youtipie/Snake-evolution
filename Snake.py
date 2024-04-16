@@ -1,4 +1,6 @@
 import math
+from statistics import mean
+
 import pygame
 import random
 
@@ -29,7 +31,7 @@ class Snake:
         self.body.insert(0, [self.x, self.y])
         self.body.pop()
 
-    def turn(self, direction):
+    def turn_3(self, direction):
         if direction == 0:
             return True
         elif direction == 1:
@@ -62,6 +64,23 @@ class Snake:
             return True
         else:
             return False
+
+    def turn_4(self, direction):
+        if direction == 0:
+            self.dx = 0
+            self.dy = cellSize
+        elif direction == 1:
+            self.dx = 0
+            self.dy = -cellSize
+        elif direction == 2:
+            self.dx = -cellSize
+            self.dy = 0
+        elif direction == 3:
+            self.dx = cellSize
+            self.dy = 0
+        else:
+            return False
+        return True
 
     def collide(self):
         if self.body[0][0] < 0 \
@@ -198,13 +217,37 @@ def get_inputs(snake, food):
         dir_u,
         dir_d,
 
-        snake.angle_with_food(food) / 180
-        # food.x < snake.x,  # food left
-        # food.x > snake.x,  # food right
-        # food.y < snake.y,  # food up
-        # food.y > snake.y  # food down
+        snake.angle_with_food(food) / 180,
+        # math.sqrt((snake.x - food.x) ** 2 + (snake.y - food.y) ** 2) / mean([win_height, win_width])
+        # food.x < snake.x
+        # food.x > snake.x,
+        # food.y < snake.y,
+        # food.y > snake.y
     ]
     return inputs
+
+
+def get_grid(snake, food, fov):
+    grid = []
+    for i in range(snake.y - fov * cellSize, snake.y + 1 + fov * cellSize, cellSize):
+        row = []
+        for j in range(snake.x - fov * cellSize, snake.x + 1 + fov * cellSize, cellSize):
+            if j == food.x and i == food.y:
+                row.append(2)
+            else:
+                found = False
+                for pos in snake.body:
+                    if j == pos[0] and i == pos[1]:
+                        row.append(1)
+                        found = True
+                if not found:
+                    if j < 0 or j >= win_width or i < 0 or i >= win_height:
+                        row.append(1)
+                    else:
+                        row.append(0)
+
+        grid.append(row)
+    return grid
 
 
 def main():
@@ -219,17 +262,25 @@ def main():
     score = 0
     while True:
         clock.tick(FPS)
-
-        print(get_inputs(snake, food))
+        # print(get_inputs(snake, food))
+        # print("\n")
+        # for row in get_grid(snake, food, 4):
+        #     print(row)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
-                    snake.turn(1)
+                    snake.turn_3(1)
+                    # snake.turn_4(2)
                 elif event.key == pygame.K_RIGHT:
-                    snake.turn(2)
+                    snake.turn_3(2)
+                    # snake.turn_4(3)
+                # elif event.key == pygame.K_UP:
+                #     snake.turn_4(1)
+                # elif event.key == pygame.K_DOWN:
+                #     snake.turn_4(0)
         snake.move()
         if snake.collide():
             return
