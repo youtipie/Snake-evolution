@@ -22,6 +22,7 @@ def fitness_eval(population: List[Individual]) -> List[float]:
 
 def generate_child(parents):
     children = []
+    mutated_number = 0
     for _ in range(int(POPULATION_SIZE * 0.1)):
         parent1 = np.random.choice(parents)
         parent2 = np.random.choice(parents)
@@ -31,14 +32,17 @@ def generate_child(parents):
             child = single_point_crossover(parent1, parent2)
         if random.random() < MUTATION_PROB:
             child = mutate(child)
+            mutated_number += 1
         children.append(child)
-    return children
+    return children, mutated_number
 
 
 def select_new_population(population, fitness_scores):
     sorted_indices = np.argsort(fitness_scores)[::-1]
-    selected_parents_indices = sorted_indices[:POPULATION_SIZE // 2]
+    selected_parents_indices = sorted_indices[:int(POPULATION_SIZE * 0.1)]
     parents = [population[i] for i in selected_parents_indices]
+
+    best_individual = population[sorted_indices[0]]
 
     children = []
     mutated_number = 0
@@ -46,10 +50,12 @@ def select_new_population(population, fitness_scores):
     args = [parents for _ in range(0, POPULATION_SIZE, int(POPULATION_SIZE * 0.1))]
 
     with Pool(4) as pool:
-        res = pool.map(generate_child, args)
+        results = pool.map(generate_child, args)
 
-    children.extend(res)
-    return np.array(children).ravel(), mutated_number
+    for result in results:
+        children.extend(result[0])
+        mutated_number += result[1]
+    return children, mutated_number, best_individual
 
 
 def single_point_crossover(parent1, parent2):
