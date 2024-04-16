@@ -1,9 +1,8 @@
 import pickle
 import random
-import time
+from multiprocessing import Pool
 from typing import List
 import numpy as np
-import threading
 from individual import Individual
 from config import *
 
@@ -21,6 +20,21 @@ def fitness_eval(population: List[Individual]) -> List[float]:
     return fitness_values
 
 
+def generate_child(parents):
+    children = []
+    for _ in range(int(POPULATION_SIZE * 0.1)):
+        parent1 = np.random.choice(parents)
+        parent2 = np.random.choice(parents)
+        if random.random() < CROSSOVER_TYPE_RATE:
+            child = uniform_crossover(parent1, parent2)
+        else:
+            child = single_point_crossover(parent1, parent2)
+        if random.random() < MUTATION_PROB:
+            child = mutate(child)
+        children.append(child)
+    return children
+
+
 def select_new_population(population, fitness_scores):
     sorted_indices = np.argsort(fitness_scores)[::-1]
     selected_parents_indices = sorted_indices[:POPULATION_SIZE // 2]
@@ -29,19 +43,13 @@ def select_new_population(population, fitness_scores):
     children = []
     mutated_number = 0
 
-    while len(children) < POPULATION_SIZE:
-        parent1 = np.random.choice(parents)
-        parent2 = np.random.choice(parents)
-        if random.random() < CROSSOVER_TYPE_RATE:
-            child = uniform_crossover(parent1, parent2)
-        else:
-            child = single_point_crossover(parent1, parent2)
-        if random.random() < MUTATION_PROB:
-            mutated_number += 1
-            child = mutate(child)
-        children.append(child)
+    args = [parents for _ in range(0, POPULATION_SIZE, int(POPULATION_SIZE * 0.1))]
 
-    return children, mutated_number
+    with Pool(4) as pool:
+        res = pool.map(generate_child, args)
+
+    children.extend(res)
+    return np.array(children).ravel(), mutated_number
 
 
 def single_point_crossover(parent1, parent2):
