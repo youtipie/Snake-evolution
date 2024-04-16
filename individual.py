@@ -20,7 +20,7 @@ class Individual:
         self.biases = []
 
         if not is_copy:
-            for i in range(hidden_layers_num + 1):
+            for i in range(hidden_layers_num ):
                 entry_size = hidden_layers_neurons if i != 0 else input_size
                 self.layers.append(np.random.rand(hidden_layers_neurons, entry_size) * 2 - 1)
                 self.biases.append(np.random.rand(hidden_layers_neurons, 1) * 2 - 1)
