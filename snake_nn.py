@@ -1,8 +1,13 @@
+import os
+
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
+
 import math
-import threading
+import os.path
+import pandas as pd
 import pygame
 import matplotlib.pyplot as plt
-from time import time
+from time import time, sleep
 
 from statistics import mean
 from genetic_algorithm import *
@@ -200,13 +205,13 @@ def get_inputs(snake, food):
         (dir_r and du == 1) or
         (dir_l and dd == 1),
 
-        dir_l,
-        dir_r,
-        dir_u,
-        dir_d,
+        # dir_l,
+        # dir_r,
+        # dir_u,
+        # dir_d,
 
         snake.angle_with_food(food) / 180,
-        math.sqrt((snake.x - food.x) ** 2 + (snake.y - food.y) ** 2) / mean([win_height, win_width])
+        # math.sqrt((snake.x - food.x) ** 2 + (snake.y - food.y) ** 2) / mean([win_height, win_width])
         # food.x < snake.x,  # food left
         # food.x > snake.x,  # food right
         # food.y < snake.y,  # food up
@@ -237,20 +242,21 @@ def main(individual: Individual, display=False):
         snake.turn(direction)
         snake.move()
         if snake.collide():
-            # individual.bonus_fitness = -10
-            # semaphore.release()
+            individual.bonus_fitness = -10
             return
         if individual.time_alive >= max_time_alive:
-            # individual.bonus_fitness = -10
-            # semaphore.release()
+            individual.bonus_fitness = -10
             return
         if snake.growth(food):
             score += 1
             individual.score += 1
-            max_time_alive += 20
+            if score < 10:
+                max_time_alive += 50
+            else:
+                max_time_alive += 100
             food.respawn()
-        if inputs[-2] == 0:
-            individual.bonus_fitness += 10
+        if inputs[-1] == 0:
+            individual.bonus_fitness += 0.1
             max_time_alive += 1
         if display:
             draw_window(win, score, grid, snake, food)
@@ -260,52 +266,52 @@ def main(individual: Individual, display=False):
 
 if __name__ == '__main__':
     if not showcase:
-        population = init_population()
-        generation_number = 0
+        if os.path.exists("population_test.obj"):
+            population = load_population("population_test")
+            data = pd.read_csv("generation_data_test.csv")
+            generation_number = data["Generation"].values[-1]
+            print("Loaded population")
+        else:
+            data = pd.DataFrame(
+                columns=["Generation", "Avg Fitness", "Avg score", "Max Score", "Mutations Number", "Elapsed Time"])
+            population = init_population()
+            generation_number = 0
 
-        generation_numbers = []
-        fitnesses = []
-
-        plt.ion()
         while True:
             start = time()
             generation_number += 1
 
-            threads = []
-            semaphore = threading.Semaphore(100)
-
             for individual in population:
-                # thread = threading.Thread(target=main, args=(individual, True if generation_number >= 30 else False,))
-                # thread.start()
-                # threads.append(thread)
-                # semaphore.acquire()
-                main(individual, True if generation_number >= 1000 else False)
-
-            for thread in threads:
-                thread.join()
+                main(individual, False)
 
             fitness_values = fitness_eval(population)
-            parent1, parent2 = select_parents(population, fitness_values)
-            if mean(fitness_values) > 450:
-                save_individual(parent1)
-            # for parent in [parent1, parent2]:
-            #     main(parent, True)
-            population, mutated_number = mutate(crossover(parent1, parent2))
+            avg_fitness = mean(fitness_values)
+            avg_score = mean([individual.score for individual in population])
+            
+            population, mutated_number, best_individual = select_new_population(population, fitness_values)
+            elapsed = time() - start
             print(
                 f"Generation №{generation_number}. "
-                f"Avg fitness: {mean(fitness_values)}. "
-                f"Max fitness: {max(fitness_values)} "
+                f"Avg fitness: {avg_fitness}. "
+                f"Avg score: {avg_score} "
+                f"Max score: {best_individual.score} "
                 f"Mutations number: {mutated_number} "
-                f"Elapsed time: {time() - start}")
-            generation_numbers.append(generation_number)
-            fitnesses.append(mean(fitness_values))
-            plt.clf()
-            plt.plot(generation_numbers, fitnesses)
-            plt.title("Generation average fitness")
-            plt.xlabel("Generation")
-            plt.ylabel("Generation average fitness")
-            plt.draw()
-            plt.pause(0.001)
+                f"Elapsed time: {elapsed}")
+            data.loc[len(data.index)] = [generation_number, avg_fitness, avg_score, best_individual.score,
+                                         mutated_number,
+                                         elapsed]
+
+            if generation_number % 10 == 0:
+                data.to_csv("generation_data_test.csv", index=False)
+                save_population(population, "population_test")
+                save_individual(best_individual, "snake")
     else:
+        data = pd.read_csv("generation_data.csv")
+        generation_number = data["Generation"].values[-1]
+        plt.plot(data["Generation"], data["Avg Fitness"])
+        plt.title("Generation average fitness")
+        plt.xlabel("Generation")
+        plt.ylabel("Generation average fitness")
+        plt.show()
         while True:
             main(load_individual("snake.obj"), True)
