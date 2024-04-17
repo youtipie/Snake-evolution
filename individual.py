@@ -14,7 +14,6 @@ class Individual:
     def __init__(self, input_size, hidden_layers_num, hidden_layers_neurons, is_copy=False):
         self.score = 0
         self.time_alive = 0
-        self.move_frequency = {0: 0, 1: 0, 2: 0}
         self.bonus_fitness = 0
         self.layers = []
         self.biases = []
