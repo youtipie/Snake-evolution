@@ -41,7 +41,7 @@ class Snake:
         self.body.insert(0, [self.x, self.y])
         self.body.pop()
 
-    def turn(self, direction):
+    def turn_3(self, direction):
         if direction == 0:
             return True
         elif direction == 1:
@@ -74,6 +74,23 @@ class Snake:
             return True
         else:
             return False
+
+    def turn_4(self, direction):
+        if direction == 0:
+            self.dx = 0
+            self.dy = cellSize
+        elif direction == 1:
+            self.dx = 0
+            self.dy = -cellSize
+        elif direction == 2:
+            self.dx = -cellSize
+            self.dy = 0
+        elif direction == 3:
+            self.dx = cellSize
+            self.dy = 0
+        else:
+            return False
+        return True
 
     def collide(self):
         if self.body[0][0] < 0 \
@@ -220,6 +237,36 @@ def get_inputs(snake, food):
     return inputs
 
 
+def get_grid(snake, food, fov):
+    grid = []
+    for i in range(snake.y - fov * cellSize, snake.y + 1 + fov * cellSize, cellSize):
+        row = []
+        for j in range(snake.x - fov * cellSize, snake.x + 1 + fov * cellSize, cellSize):
+            if j == food.x and i == food.y:
+                row.append(2)
+            else:
+                found = False
+                for pos in snake.body:
+                    if j == pos[0] and i == pos[1]:
+                        row.append(1)
+                        found = True
+                        break
+                if not found:
+                    if j < 0 or j >= win_width or i < 0 or i >= win_height:
+                        row.append(1)
+                    else:
+                        row.append(0)
+
+        grid.append(row)
+    food_data = [food.x < snake.x,
+                 food.x > snake.x,
+                 food.y < snake.y,
+                 food.y > snake.y]
+    grid = np.array(grid).flatten()
+    grid = np.append(grid, food_data)
+    return grid
+
+
 def main(individual: Individual, display=False):
     if display:
         win = pygame.display.set_mode((win_width, win_height))
@@ -238,8 +285,7 @@ def main(individual: Individual, display=False):
 
         inputs = get_inputs(snake, food)
         direction = individual.forward(inputs=inputs).argmax()
-        individual.move_frequency[direction] += 1
-        snake.turn(direction)
+        snake.turn_3(direction)
         snake.move()
         if snake.collide():
             individual.bonus_fitness = -10
@@ -255,9 +301,9 @@ def main(individual: Individual, display=False):
             else:
                 max_time_alive += 100
             food.respawn()
-        if inputs[-1] == 0:
-            individual.bonus_fitness += 0.1
-            max_time_alive += 1
+        # if inputs[-1] == 0:
+        #     individual.bonus_fitness += 0.1
+        #     max_time_alive += 1
         if display:
             draw_window(win, score, grid, snake, food)
 
@@ -266,9 +312,9 @@ def main(individual: Individual, display=False):
 
 if __name__ == '__main__':
     if not showcase:
-        if os.path.exists("population_test.obj"):
-            population = load_population("population_test")
-            data = pd.read_csv("generation_data_test.csv")
+        if os.path.exists("population.obj"):
+            population = load_population("population")
+            data = pd.read_csv("generation_data.csv")
             generation_number = data["Generation"].values[-1]
             print("Loaded population")
         else:
@@ -287,7 +333,7 @@ if __name__ == '__main__':
             fitness_values = fitness_eval(population)
             avg_fitness = mean(fitness_values)
             avg_score = mean([individual.score for individual in population])
-            
+
             population, mutated_number, best_individual = select_new_population(population, fitness_values)
             elapsed = time() - start
             print(
@@ -302,16 +348,16 @@ if __name__ == '__main__':
                                          elapsed]
 
             if generation_number % 10 == 0:
-                data.to_csv("generation_data_test.csv", index=False)
-                save_population(population, "population_test")
+                data.to_csv("generation_data.csv", index=False)
+                save_population(population, "population")
                 save_individual(best_individual, "snake")
     else:
         data = pd.read_csv("generation_data.csv")
         generation_number = data["Generation"].values[-1]
-        plt.plot(data["Generation"], data["Avg Fitness"])
-        plt.title("Generation average fitness")
+        plt.plot(data["Generation"], data["Avg score"])
+        plt.title("Generation average score")
         plt.xlabel("Generation")
-        plt.ylabel("Generation average fitness")
+        plt.ylabel("Generation average score")
         plt.show()
         while True:
             main(load_individual("snake.obj"), True)

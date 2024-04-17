@@ -1,6 +1,7 @@
 import math
 from statistics import mean
 
+import numpy as np
 import pygame
 import random
 
@@ -240,6 +241,7 @@ def get_grid(snake, food, fov):
                     if j == pos[0] and i == pos[1]:
                         row.append(1)
                         found = True
+                        break
                 if not found:
                     if j < 0 or j >= win_width or i < 0 or i >= win_height:
                         row.append(1)
@@ -247,6 +249,12 @@ def get_grid(snake, food, fov):
                         row.append(0)
 
         grid.append(row)
+    food_data = [food.x < snake.x,
+                 food.x > snake.x,
+                 food.y < snake.y,
+                 food.y > snake.y]
+    grid = np.array(grid).flatten()
+    grid = np.append(grid, food_data)
     return grid
 
 
