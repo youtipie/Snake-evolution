@@ -289,10 +289,10 @@ def main(individual: Individual, display=False):
         snake.move()
         if snake.collide():
             individual.bonus_fitness = -10
-            return
+            return individual
         if individual.time_alive >= max_time_alive:
             individual.bonus_fitness = -10
-            return
+            return individual
         if snake.growth(food):
             score += 1
             individual.score += 1
@@ -327,8 +327,8 @@ if __name__ == '__main__':
             start = time()
             generation_number += 1
 
-            for individual in population:
-                main(individual, False)
+            with Pool(4) as pool:
+                population = pool.map(main, population)
 
             fitness_values = fitness_eval(population)
             avg_fitness = mean(fitness_values)
